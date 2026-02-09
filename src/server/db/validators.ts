@@ -40,7 +40,7 @@ export const projectMetadataSchema = z
     claudeDescription: z.string().nullable().optional(),
     errors: z.array(z.string()).optional(),
   })
-  .passthrough();
+  .strict();
 
 export type ProjectMetadata = z.infer<typeof projectMetadataSchema>;
 
@@ -63,3 +63,5 @@ export const scanOptionsSchema = z.object({
   dryRun: z.boolean().default(false),
   githubUser: z.string().optional(),
 });
+
+export type ScanOptions = z.infer<typeof scanOptionsSchema>;

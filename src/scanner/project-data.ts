@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { lstat, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import fg from "fast-glob";
 import simpleGit from "simple-git";
@@ -25,7 +25,7 @@ const NESTED_GIT_RE = /\/?\.git$/;
 
 async function fileExists(path: string): Promise<boolean> {
   try {
-    const s = await stat(path);
+    const s = await lstat(path);
     return s.isFile();
   } catch {
     return false;
@@ -34,7 +34,7 @@ async function fileExists(path: string): Promise<boolean> {
 
 async function dirExists(path: string): Promise<boolean> {
   try {
-    const s = await stat(path);
+    const s = await lstat(path);
     return s.isDirectory();
   } catch {
     return false;
@@ -46,11 +46,8 @@ async function readFileSafely(
   maxLines = 1000
 ): Promise<string | null> {
   try {
-    if (!(await fileExists(filePath))) {
-      return null;
-    }
-    const s = await stat(filePath);
-    if (s.size > MAX_FILE_SIZE) {
+    const s = await lstat(filePath);
+    if (!s.isFile() || s.size > MAX_FILE_SIZE) {
       return null;
     }
     const content = await readFile(filePath, "utf-8");
@@ -69,16 +66,18 @@ function detectIsFork(remoteUrl: string | null, githubUser?: string): boolean {
   if (!match) {
     return false;
   }
-  return match[1].toLowerCase() !== githubUser.toLowerCase();
+  return match[1]?.toLowerCase() !== githubUser.toLowerCase();
 }
 
 function extractDescriptionFromFile(content: string): string | null {
   const sectionMatch = content.match(DESCRIPTION_SECTION_RE);
   if (sectionMatch) {
-    return sectionMatch[2]
-      .trim()
-      .replace(/\n+/g, " ")
-      .slice(0, MAX_DESCRIPTION_LENGTH);
+    return (
+      sectionMatch[2]
+        ?.trim()
+        .replace(/\n+/g, " ")
+        .slice(0, MAX_DESCRIPTION_LENGTH) ?? null
+    );
   }
 
   const lines = content
@@ -91,10 +90,12 @@ function extractDescriptionFromFile(content: string): string | null {
 
   const h1Match = content.match(H1_CONTENT_RE);
   if (h1Match) {
-    return h1Match[1]
-      .trim()
-      .replace(/\n+/g, " ")
-      .slice(0, MAX_DESCRIPTION_LENGTH);
+    return (
+      h1Match[1]
+        ?.trim()
+        .replace(/\n+/g, " ")
+        .slice(0, MAX_DESCRIPTION_LENGTH) ?? null
+    );
   }
 
   return null;
@@ -102,7 +103,8 @@ function extractDescriptionFromFile(content: string): string | null {
 
 async function inferDescription(
   repoPath: string,
-  name: string
+  name: string,
+  pkgContent: string | null
 ): Promise<string> {
   const candidates = [
     join(repoPath, ".ai/PROJECT_STATUS.md"),
@@ -125,7 +127,6 @@ async function inferDescription(
     }
   }
 
-  const pkgContent = await readFileSafely(join(repoPath, "package.json"));
   if (pkgContent) {
     try {
       const pkg = JSON.parse(pkgContent);
@@ -142,7 +143,7 @@ async function inferDescription(
     const content = await readFileSafely(gemspec);
     if (content) {
       const match = content.match(GEMSPEC_SUMMARY_RE);
-      if (match) {
+      if (match?.[1]) {
         return match[1];
       }
     }
@@ -207,26 +208,25 @@ const NODE_DEPS: [string, string][] = [
   ['"vue"', "vue"],
 ];
 
-async function detectNodeFrameworks(
-  repoPath: string,
+function detectNodeFrameworks(
+  pkgContent: string | null,
   stack: string[]
-): Promise<void> {
-  if (!(await fileExists(join(repoPath, "package.json")))) {
+): void {
+  if (!pkgContent) {
     return;
   }
   stack.push("node");
-  const pkg = await readFileSafely(join(repoPath, "package.json"));
-  if (!pkg) {
-    return;
-  }
   for (const [dep, name] of NODE_DEPS) {
-    if (pkg.includes(dep)) {
+    if (pkgContent.includes(dep)) {
       stack.push(name);
     }
   }
 }
 
-async function detectTechStack(repoPath: string): Promise<string[]> {
+async function detectTechStack(
+  repoPath: string,
+  pkgContent: string | null
+): Promise<string[]> {
   const stack: string[] = [];
 
   for (const check of TECH_STACK_CHECKS) {
@@ -238,7 +238,7 @@ async function detectTechStack(repoPath: string): Promise<string[]> {
     }
   }
 
-  await detectNodeFrameworks(repoPath, stack);
+  detectNodeFrameworks(pkgContent, stack);
 
   return [...new Set(stack)];
 }
@@ -333,14 +333,16 @@ async function inferCurrentState(
   return parts.join(", ") || "unknown";
 }
 
-async function inferDeploymentStatus(repoPath: string): Promise<string> {
+async function inferDeploymentStatus(
+  repoPath: string,
+  pkgContent: string | null
+): Promise<string> {
   const indicators: string[] = [];
 
   if (await fileExists(join(repoPath, "bin/deploy"))) {
     indicators.push("has deploy script");
   }
 
-  const pkgContent = await readFileSafely(join(repoPath, "package.json"));
   if (pkgContent) {
     if (pkgContent.includes('"deploy"')) {
       indicators.push("has deploy npm script");
@@ -490,7 +492,17 @@ function errorMsg(prefix: string, e: unknown): string {
   return `${prefix}: ${e instanceof Error ? e.message : String(e)}`;
 }
 
-async function extractGitData(git: ReturnType<typeof simpleGit>) {
+interface GitData {
+  lastCommitDate: string;
+  lastCommitMessage: string;
+  lastCommitAuthor: string;
+  recentCommits: { date: string; message: string }[];
+  contributors: string[];
+}
+
+async function extractGitData(
+  git: ReturnType<typeof simpleGit>
+): Promise<GitData | null> {
   const log = await git.log({ maxCount: 10 });
   if (!log.latest) {
     return null;
@@ -499,11 +511,11 @@ async function extractGitData(git: ReturnType<typeof simpleGit>) {
   const authorSet = new Set(log.all.map((entry) => entry.author_name));
 
   return {
-    lastCommitDate: log.latest.date,
+    lastCommitDate: new Date(log.latest.date).toISOString(),
     lastCommitMessage: log.latest.message,
     lastCommitAuthor: log.latest.author_name,
     recentCommits: log.all.map((entry) => ({
-      date: entry.date,
+      date: new Date(entry.date).toISOString(),
       message: entry.message,
     })),
     contributors: [...authorSet],
@@ -513,10 +525,12 @@ async function extractGitData(git: ReturnType<typeof simpleGit>) {
 async function extractMetadata(
   repoPath: string,
   name: string,
-  gitData: NonNullable<Awaited<ReturnType<typeof extractGitData>>>,
+  gitData: GitData,
   gitRemote: string | undefined,
   errors: string[]
 ): Promise<ProjectMetadata> {
+  const pkgContent = await readFileSafely(join(repoPath, "package.json"));
+
   let referenceFiles: Record<string, string[]> = {};
   try {
     referenceFiles = await findReferenceFiles(repoPath);
@@ -526,14 +540,14 @@ async function extractMetadata(
 
   let description = name;
   try {
-    description = await inferDescription(repoPath, name);
+    description = await inferDescription(repoPath, name, pkgContent);
   } catch (e) {
     errors.push(errorMsg("Description error", e));
   }
 
   let techStack: string[] = [];
   try {
-    techStack = await detectTechStack(repoPath);
+    techStack = await detectTechStack(repoPath, pkgContent);
   } catch (e) {
     errors.push(errorMsg("Tech stack error", e));
   }
@@ -553,7 +567,7 @@ async function extractMetadata(
 
   let deploymentStatus: string | undefined;
   try {
-    deploymentStatus = await inferDeploymentStatus(repoPath);
+    deploymentStatus = await inferDeploymentStatus(repoPath, pkgContent);
   } catch (e) {
     errors.push(errorMsg("Deployment error", e));
   }
@@ -621,7 +635,7 @@ export async function extractProjectData(
   const git = simpleGit(repoPath);
 
   // Extract git data
-  let gitData: Awaited<ReturnType<typeof extractGitData>>;
+  let gitData: GitData | null;
   try {
     gitData = await extractGitData(git);
   } catch (e) {

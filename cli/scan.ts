@@ -15,11 +15,18 @@ program
     "GitHub username for fork detection (or set GITHUB_USER env var)"
   )
   .action(async (rawOptions) => {
-    const options = scanOptionsSchema.parse({
+    const result = scanOptionsSchema.safeParse({
       ...rawOptions,
       githubUser: rawOptions.githubUser ?? process.env.GITHUB_USER,
     });
-    await scan(options);
+    if (!result.success) {
+      console.error("Invalid options:");
+      for (const issue of result.error.issues) {
+        console.error(`  ${issue.path.join(".")}: ${issue.message}`);
+      }
+      process.exit(1);
+    }
+    await scan(result.data);
   });
 
 program.parse();

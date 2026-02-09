@@ -2,19 +2,11 @@ import { dirname } from "node:path";
 import fg from "fast-glob";
 import { db } from "../server/db/client.ts";
 import { projects } from "../server/db/schema.ts";
-import type { ScannedProject } from "../server/db/validators.ts";
+import type { ScannedProject, ScanOptions } from "../server/db/validators.ts";
 import { extractProjectData } from "./project-data.ts";
 
-interface ScanOptions {
-  root: string;
-  cutoffDays: number;
-  dryRun: boolean;
-  githubUser?: string;
-}
-
 interface ScanResult {
-  inserted: number;
-  skipped: number;
+  saved: number;
   skipped: number;
   errored: number;
   total: number;
@@ -41,8 +33,7 @@ async function processRepos(
 ): Promise<ScannedProject[]> {
   const scannedProjects: ScannedProject[] = [];
 
-  for (let i = 0; i < repoPaths.length; i++) {
-    const repoPath = repoPaths[i];
+  for (const [i, repoPath] of repoPaths.entries()) {
     const name = repoPath.split("/").pop() ?? "unknown";
     const prefix = `  [${i + 1}/${repoPaths.length}] ${name.padEnd(40)} `;
 
@@ -91,8 +82,7 @@ async function persistProjects(
   console.log();
   console.log("Saving to database...");
 
-  for (let i = 0; i < scannedProjects.length; i++) {
-    const project = scannedProjects[i];
+  for (const [i, project] of scannedProjects.entries()) {
     const projectName = project.name.padEnd(40);
     const forkStatus = project.isFork ? "[Fork]" : "[Own]";
     process.stdout.write(
@@ -123,7 +113,7 @@ async function persistProjects(
           },
         });
 
-      result.inserted++;
+      result.saved++;
       console.log("\u2713");
     } catch (e) {
       result.errored++;
@@ -133,7 +123,7 @@ async function persistProjects(
   }
 
   console.log();
-  console.log(`Saved ${result.inserted} projects to database`);
+  console.log(`Saved ${result.saved} projects to database`);
 }
 
 function printSummary(
@@ -189,7 +179,7 @@ function printSummary(
     .slice(0, 10);
 
   for (const project of sorted) {
-    const forkBadge = project.isFork ? "[Fork]" : "[Own] ";
+    const forkBadge = project.isFork ? "[Fork]" : "[Own]";
     const dateStr = new Date(project.lastCommitDate)
       .toISOString()
       .split("T")[0];
@@ -221,8 +211,7 @@ export async function scan(options: ScanOptions): Promise<ScanResult> {
   console.log();
 
   const result: ScanResult = {
-    inserted: 0,
-    updated: 0,
+    saved: 0,
     skipped: 0,
     errored: 0,
     total: repoPaths.length,
