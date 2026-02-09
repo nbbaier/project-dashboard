@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { z } from "zod/v4";
 import { PROJECT_GOAL_STATUSES } from "./schema.ts";
 
@@ -39,6 +40,28 @@ export const projectMetadataSchema = z
     claudeDescription: z.string().nullable().optional(),
     errors: z.array(z.string()).optional(),
   })
-  .passthrough();
+  .strict();
 
 export type ProjectMetadata = z.infer<typeof projectMetadataSchema>;
+
+export const scannedProjectSchema = insertProjectSchema.extend({
+  metadata: projectMetadataSchema,
+  isFork: z.boolean(),
+  lastCommitMessage: z.string().nullable(),
+});
+
+export type ScannedProject = z.infer<typeof scannedProjectSchema>;
+
+const TILDE_RE = /^~/;
+
+export const scanOptionsSchema = z.object({
+  root: z
+    .string()
+    .min(1)
+    .transform((p) => p.replace(TILDE_RE, homedir())),
+  cutoffDays: z.coerce.number().int().positive().default(240),
+  dryRun: z.boolean().default(false),
+  githubUser: z.string().optional(),
+});
+
+export type ScanOptions = z.infer<typeof scanOptionsSchema>;
