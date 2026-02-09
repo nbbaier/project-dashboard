@@ -110,6 +110,7 @@ async function persistProjects(
             lastCommitMessage: values.lastCommitMessage,
             metadata: values.metadata,
             isFork: values.isFork,
+            updatedAt: new Date(),
           },
         });
 
