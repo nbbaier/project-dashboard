@@ -14,7 +14,7 @@ interface ScanOptions {
 
 interface ScanResult {
   inserted: number;
-  updated: number;
+  skipped: number;
   skipped: number;
   errored: number;
   total: number;
