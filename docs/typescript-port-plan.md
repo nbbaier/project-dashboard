@@ -12,23 +12,23 @@ See: `docs/brainstorms/2026-02-08-simplify-frontend-stack-brainstorm.md` for ful
 
 ## Target Tech Stack
 
-| Layer | Tool | Replaces |
-|-------|------|----------|
-| Runtime | **Bun** | Ruby 3.4 |
-| Server/Router | **Hono** | Rails controllers + routing |
-| Templating | **Hono JSX** | ERB templates |
-| Database | **SQLite via Turso / libSQL** | SQLite via `sqlite3` gem |
-| ORM | **Drizzle** | ActiveRecord |
-| Validation | **Zod** | AR validations |
-| Interactivity | **htmx** | Turbo Frames/Streams |
-| Client JS | **Vanilla JS (~60 lines)** | 7 Stimulus controllers (220 lines) |
-| Styling | **Tailwind 4** (same) | Tailwind 4 (same) |
-| Bundling | **bun build** | Sprockets |
-| Git Operations | **simple-git** | Backtick shell commands |
-| File Traversal | **fast-glob** + Node `fs` | `Find.find` + `Dir.glob` |
-| CLI | **commander** | Rake tasks |
-| Testing | **Vitest + Testing Library** | (none exist) |
-| Linting / Formatting | **Ultracite + Biome** | RuboCop |
+| Layer                | Tool                          | Replaces                           |
+| -------------------- | ----------------------------- | ---------------------------------- |
+| Runtime              | **Bun**                       | Ruby 3.4                           |
+| Server/Router        | **Hono**                      | Rails controllers + routing        |
+| Templating           | **Hono JSX**                  | ERB templates                      |
+| Database             | **SQLite via Turso / libSQL** | SQLite via `sqlite3` gem           |
+| ORM                  | **Drizzle**                   | ActiveRecord                       |
+| Validation           | **Zod**                       | AR validations                     |
+| Interactivity        | **htmx**                      | Turbo Frames/Streams               |
+| Client JS            | **Vanilla JS (~60 lines)**    | 7 Stimulus controllers (220 lines) |
+| Styling              | **Tailwind 4** (same)         | Tailwind 4 (same)                  |
+| Bundling             | **bun build**                 | Sprockets                          |
+| Git Operations       | **simple-git**                | Backtick shell commands            |
+| File Traversal       | **fast-glob** + Node `fs`     | `Find.find` + `Dir.glob`           |
+| CLI                  | **commander**                 | Rake tasks                         |
+| Testing              | **Vitest + Testing Library**  | (none exist)                       |
+| Linting / Formatting | **Ultracite + Biome**         | RuboCop                            |
 
 ## Current Codebase Inventory
 
@@ -155,15 +155,15 @@ GET  /api/health  → health check, return JSON
 
 Port the 30 ERB templates to Hono JSX (`.tsx` files that render to HTML strings on the server). The conversion is nearly mechanical:
 
-| Rails ERB | Hono JSX | Notes |
-|-----------|----------|-------|
-| `<%= project.name %>` | `{project.name}` | JS expressions |
-| `<% if condition %>` | `{condition && ...}` | Conditional rendering |
-| `<% @projects.each do \|p\| %>` | `{projects.map(p => ...)}` | Array iteration |
-| `<%= link_to "Text", path %>` | `<a href={path}>Text</a>` | Standard HTML |
-| `<%= render "partial" %>` | `<Partial />` | Component composition |
-| `<%= button_to path, method: :post %>` | `<form method="POST" action={path}>` | HTML forms |
-| Turbo Frame tag | htmx attributes | `hx-post`, `hx-target`, `hx-swap` |
+| Rails ERB                              | Hono JSX                             | Notes                             |
+| -------------------------------------- | ------------------------------------ | --------------------------------- |
+| `<%= project.name %>`                  | `{project.name}`                     | JS expressions                    |
+| `<% if condition %>`                   | `{condition && ...}`                 | Conditional rendering             |
+| `<% @projects.each do \|p\| %>`        | `{projects.map(p => ...)}`           | Array iteration                   |
+| `<%= link_to "Text", path %>`          | `<a href={path}>Text</a>`            | Standard HTML                     |
+| `<%= render "partial" %>`              | `<Partial />`                        | Component composition             |
+| `<%= button_to path, method: :post %>` | `<form method="POST" action={path}>` | HTML forms                        |
+| Turbo Frame tag                        | htmx attributes                      | `hx-post`, `hx-target`, `hx-swap` |
 
 Tailwind classes copy directly — no changes needed.
 
@@ -175,13 +175,17 @@ Replace Turbo Frames with htmx for inline CRUD:
 
 ```html
 <!-- Adding a tag -->
-<form hx-post="/projects/123/tags" hx-target="#project-tags" hx-swap="innerHTML">
-  <input name="tag_name" />
-  <button type="submit">Add Tag</button>
+<form
+   hx-post="/projects/123/tags"
+   hx-target="#project-tags"
+   hx-swap="innerHTML"
+>
+   <input name="tag_name" />
+   <button type="submit">Add Tag</button>
 </form>
 
 <div id="project-tags">
-  <!-- Server returns updated HTML fragment for this div -->
+   <!-- Server returns updated HTML fragment for this div -->
 </div>
 ```
 
@@ -189,14 +193,14 @@ Replace Turbo Frames with htmx for inline CRUD:
 
 Port the 7 Stimulus controllers (~220 lines) to vanilla JS (~60 lines):
 
-| Stimulus Controller | Vanilla JS | Lines |
-|---------------------|------------|-------|
-| `accordion_controller.js` | Toggle `.hidden` class on click | ~10 |
-| `clickable_rows_controller.js` | `addEventListener('click')` on rows | ~10 |
-| `search_form_controller.js` | `setTimeout` debounce on input | ~15 |
-| `quick_actions_controller.js` | Clipboard API, shell commands | ~20 |
-| `note_input_controller.js` | Auto-resize textarea | ~5 |
-| `tag_input_controller.js` | Enter key submit | ~5 |
+| Stimulus Controller            | Vanilla JS                          | Lines |
+| ------------------------------ | ----------------------------------- | ----- |
+| `accordion_controller.js`      | Toggle `.hidden` class on click     | ~10   |
+| `clickable_rows_controller.js` | `addEventListener('click')` on rows | ~10   |
+| `search_form_controller.js`    | `setTimeout` debounce on input      | ~15   |
+| `quick_actions_controller.js`  | Clipboard API, shell commands       | ~20   |
+| `note_input_controller.js`     | Auto-resize textarea                | ~5    |
+| `tag_input_controller.js`      | Enter key submit                    | ~5    |
 
 htmx handles the remaining controllers (form submissions, DOM updates).
 
@@ -209,9 +213,11 @@ Keep as JSON. Use Drizzle's `sql` template literals for `json_extract()` queries
 ```typescript
 // ActiveRecord: Project.where("json_extract(metadata, '$.tech_stack') LIKE ?", "%ruby%")
 // Drizzle:
-db.select().from(projects).where(
-  sql`json_extract(${projects.metadata}, '$.tech_stack') LIKE '%ruby%'`
-)
+db.select()
+   .from(projects)
+   .where(
+      sql`json_extract(${projects.metadata}, '$.tech_stack') LIKE '%ruby%'`,
+   );
 ```
 
 libSQL supports all SQLite JSON functions. Normalize later if needed.
@@ -220,11 +226,11 @@ libSQL supports all SQLite JSON functions. Normalize later if needed.
 
 Direct mapping:
 
-| Rails Turbo | htmx Equivalent |
-|-------------|-----------------|
-| `<%= turbo_frame_tag "project_tags" %>` | `<div id="project-tags">` |
-| `data: { turbo_frame: "project_tags" }` | `hx-target="#project-tags"` |
-| Turbo Stream `replace` action | `hx-swap="innerHTML"` |
+| Rails Turbo                                | htmx Equivalent                 |
+| ------------------------------------------ | ------------------------------- |
+| `<%= turbo_frame_tag "project_tags" %>`    | `<div id="project-tags">`       |
+| `data: { turbo_frame: "project_tags" }`    | `hx-target="#project-tags"`     |
+| Turbo Stream `replace` action              | `hx-swap="innerHTML"`           |
 | `render partial, formats: [:turbo_stream]` | Return HTML fragment from route |
 
 ### Filter State
@@ -234,10 +240,10 @@ Rails persists filters in session. Port to URL query params:
 ```typescript
 // Rails: session[:filters] = { status: 'active', tech: 'ruby' }
 // Hono: /projects?status=active&tech=ruby
-app.get('/projects', async (c) => {
-  const { status, tech, search } = c.req.query()
-  // Apply filters to DB query
-})
+app.get("/projects", async (c) => {
+   const { status, tech, search } = c.req.query();
+   // Apply filters to DB query
+});
 ```
 
 Filters remain shareable and bookmarkable. Hono JSX templates read `c.req.query()` to pre-fill filter form.
@@ -246,14 +252,15 @@ Filters remain shareable and bookmarkable. Hono JSX templates read `c.req.query(
 
 Port ProjectScanner + ProjectData nearly 1:1:
 
-| Ruby | TypeScript |
-|------|------------|
-| `Find.find(base_path)` | `fast-glob` with `**/.git` pattern |
-| `` `git log --format='%an'` `` | `simpleGit().log()` |
+| Ruby                             | TypeScript                         |
+| -------------------------------- | ---------------------------------- |
+| `Find.find(base_path)`           | `fast-glob` with `**/.git` pattern |
+| `` `git log --format='%an'` ``   | `simpleGit().log()`                |
 | `File.readlines().grep(/regex/)` | `Bun.file().text().match(/regex/)` |
-| `Date.parse` | `date-fns` `parseISO` |
+| `Date.parse`                     | `date-fns` `parseISO`              |
 
 **Fixes to apply:**
+
 - Remove hardcoded cutoff date (project_data.rb:51)
 - Define missing `is_fork` attribute
 - Consolidate `bin/index_all_projects` into ProjectScanner
@@ -265,9 +272,9 @@ Build client assets with `bun build`:
 ```json
 // package.json scripts
 {
-  "build:client": "bun build src/client/main.ts --outdir public --target browser",
-  "build:css": "bun build src/client/styles.css --outdir public",
-  "build": "bun run build:client && bun run build:css"
+   "build:client": "bun build src/client/main.ts --outdir public --target browser",
+   "build:css": "bun build src/client/styles.css --outdir public",
+   "build": "bun run build:client && bun run build:css"
 }
 ```
 
@@ -293,6 +300,7 @@ bunx ultracite init --linter biome --pm bun --agents claude
 Note: **Don't use `--frameworks react`** since we're not using client-side React. Hono JSX is server-only.
 
 This sets up:
+
 - `biome.jsonc` extending `ultracite/biome/core`
 - Zero-config defaults: 2-space indent, 80-char lines, semicolons, double quotes, trailing commas
 - TypeScript strictness, no `any` types, unused variable detection
@@ -315,6 +323,7 @@ This sets up:
 Rather than build horizontally (all models, all routes, all templates), implement 5 vertical slices:
 
 ### Slice 1: Foundation (DONE)
+
 - Bun project setup
 - Drizzle schema + migrations
 - DB client + Zod validators
@@ -322,12 +331,14 @@ Rather than build horizontally (all models, all routes, all templates), implemen
 - **Status:** Implemented on `feat/foundation-scaffolding-db-schema` branch, needs P1/P2 review fixes
 
 ### Slice 2: Scanner MVP
+
 - Port ProjectScanner + ProjectData
 - CLI `scan` command
 - Test on real repos
 - Fixes: hardcoded cutoff date, missing `is_fork`, consolidate `bin/index_all_projects`
 
 ### Slice 3: Read Path
+
 - Hono routes: `GET /projects`, `GET /projects/:id`
 - Server templates: index + detail pages (Hono JSX)
 - Filter form with query param handling
@@ -335,12 +346,14 @@ Rather than build horizontally (all models, all routes, all templates), implemen
 - Vanilla JS: accordion, clickable rows, search debounce
 
 ### Slice 4: Write Path
+
 - htmx inline CRUD routes for tags, notes, goals
 - Pin/unpin project
 - HTML fragment templates
 - Copy path, quick actions (vanilla JS)
 
 ### Slice 5: Polish
+
 - Sidebar layout (pinned projects, smart groups)
 - Dark mode toggle
 - Pagination + sorting
@@ -404,16 +417,16 @@ The port plan has several unknowns (`json_extract()` in Drizzle, `simple-git` be
 
 ## Effort Estimate
 
-| Area | Original (SPA) | Revised (Server) | Delta | Notes |
-|------|----------------|------------------|-------|-------|
-| Project scaffolding | 1 day | 1 day | Same | Bun, Hono, Drizzle, Ultracite |
-| DB schema + validation | 2-3 days | 2-3 days | Same | Slice 1 done |
-| Scanning engine | 2-3 days | 2-3 days | Same | Nearly 1:1 port |
-| Routes + filtering | 2-3 days | 2-3 days | Same | Routes exist, return HTML not JSON |
-| Frontend | 5-7 days | 2-3 days | **-3 to -4 days** | Server templates + htmx, no client state |
-| CLI | 1 day | 1 day | Same | Commander + JSON API routes |
-| Testing | 2-4 days | 2-3 days | Slightly less | No React component tests |
-| CI/CD | 1 day | 1 day | Same | GitHub Actions, Docker |
-| **Total** | **16-23 days** | **13-18 days** | **~3-5 days saved** |
+| Area                   | Original (SPA) | Revised (Server) | Delta               | Notes                                    |
+| ---------------------- | -------------- | ---------------- | ------------------- | ---------------------------------------- |
+| Project scaffolding    | 1 day          | 1 day            | Same                | Bun, Hono, Drizzle, Ultracite            |
+| DB schema + validation | 2-3 days       | 2-3 days         | Same                | Slice 1 done                             |
+| Scanning engine        | 2-3 days       | 2-3 days         | Same                | Nearly 1:1 port                          |
+| Routes + filtering     | 2-3 days       | 2-3 days         | Same                | Routes exist, return HTML not JSON       |
+| Frontend               | 5-7 days       | 2-3 days         | **-3 to -4 days**   | Server templates + htmx, no client state |
+| CLI                    | 1 day          | 1 day            | Same                | Commander + JSON API routes              |
+| Testing                | 2-4 days       | 2-3 days         | Slightly less       | No React component tests                 |
+| CI/CD                  | 1 day          | 1 day            | Same                | GitHub Actions, Docker                   |
+| **Total**              | **16-23 days** | **13-18 days**   | **~3-5 days saved** |
 
 The server-rendered approach is simpler and faster to implement than the original SPA plan.
