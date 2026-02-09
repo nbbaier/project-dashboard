@@ -6,39 +6,39 @@ Full rewrite of the Project Dashboard from Rails 8.2 to a TypeScript stack with 
 
 ## Target Tech Stack
 
-| Layer | Tool | Replaces |
-|-------|------|----------|
-| Runtime | **Bun** | Ruby 3.4 |
-| API Server | **Hono** | Rails controllers |
-| Database | **SQLite via Turso / libSQL** | SQLite via `sqlite3` gem |
-| ORM | **Drizzle** | ActiveRecord |
-| Validation | **Zod** | AR validations |
-| Frontend | **React + Vite** | ERB + Turbo + Stimulus |
-| Styling | **Tailwind 4** (same) | Tailwind 4 (same) |
-| Data Fetching | **TanStack Query** | Turbo Frames / Streams |
-| Routing (client) | **TanStack Router** or **React Router** | Server-rendered pages |
-| Git Operations | **simple-git** or Bun `child_process` | Backtick shell commands |
-| File Traversal | **fast-glob** + Node `fs` | `Find.find` + `Dir.glob` |
-| CLI | **commander** | Rake tasks |
-| Testing | **Vitest + Testing Library** | (none exist) |
-| Linting / Formatting | **Ultracite + Biome** | RuboCop |
+| Layer                | Tool                                    | Replaces                 |
+| -------------------- | --------------------------------------- | ------------------------ |
+| Runtime              | **Bun**                                 | Ruby 3.4                 |
+| API Server           | **Hono**                                | Rails controllers        |
+| Database             | **SQLite via Turso / libSQL**           | SQLite via `sqlite3` gem |
+| ORM                  | **Drizzle**                             | ActiveRecord             |
+| Validation           | **Zod**                                 | AR validations           |
+| Frontend             | **React + Vite**                        | ERB + Turbo + Stimulus   |
+| Styling              | **Tailwind 4** (same)                   | Tailwind 4 (same)        |
+| Data Fetching        | **TanStack Query**                      | Turbo Frames / Streams   |
+| Routing (client)     | **TanStack Router** or **React Router** | Server-rendered pages    |
+| Git Operations       | **simple-git** or Bun `child_process`   | Backtick shell commands  |
+| File Traversal       | **fast-glob** + Node `fs`               | `Find.find` + `Dir.glob` |
+| CLI                  | **commander**                           | Rake tasks               |
+| Testing              | **Vitest + Testing Library**            | (none exist)             |
+| Linting / Formatting | **Ultracite + Biome**                   | RuboCop                  |
 
 ## Current Codebase Inventory
 
 ### What Exists
 
-| Component | Size | Files |
-|-----------|------|-------|
-| ActiveRecord models | 230 lines | 6 models + ApplicationRecord |
-| Scanning engine (lib/) | 660 lines | ProjectScanner, ProjectData |
-| Controllers + concern | 313 lines | 4 controllers + Filterable |
-| ERB templates | 1,124 lines | 30 templates |
-| Stimulus JS | 220 lines | 7 controllers |
-| Rake tasks | 58 lines | 1 file, 2 tasks |
-| Helper methods | 149 lines | ProjectsHelper |
-| Standalone indexer | 324 lines | bin/index_all_projects |
-| Migrations | 7 files | 6 tables |
-| **Total** | **~3,500 lines** | **151 files** |
+| Component              | Size             | Files                        |
+| ---------------------- | ---------------- | ---------------------------- |
+| ActiveRecord models    | 230 lines        | 6 models + ApplicationRecord |
+| Scanning engine (lib/) | 660 lines        | ProjectScanner, ProjectData  |
+| Controllers + concern  | 313 lines        | 4 controllers + Filterable   |
+| ERB templates          | 1,124 lines      | 30 templates                 |
+| Stimulus JS            | 220 lines        | 7 controllers                |
+| Rake tasks             | 58 lines         | 1 file, 2 tasks              |
+| Helper methods         | 149 lines        | ProjectsHelper               |
+| Standalone indexer     | 324 lines        | bin/index_all_projects       |
+| Migrations             | 7 files          | 6 tables                     |
+| **Total**              | **~3,500 lines** | **151 files**                |
 
 ### Database Schema (6 tables)
 
@@ -133,11 +133,13 @@ POST   /api/scan                  # Trigger project scan
 ## React Components (~28)
 
 ### Layout (3)
+
 - `AppLayout` - sidebar + main content wrapper
 - `Sidebar` - nav, pinned projects, recently viewed, smart groups
 - `MobileHeader` - hamburger menu + mobile sidebar
 
 ### Projects Index (8)
+
 - `ProjectsPage` - page container
 - `QuickResumeSection` - 3-col grid of recent project cards
 - `QuickResumeCard` - individual card
@@ -148,6 +150,7 @@ POST   /api/scan                  # Trigger project scan
 - `Pagination` - page navigation
 
 ### Project Detail (10)
+
 - `ProjectDetailPage` - page container with grid layout
 - `ProjectSidebar` - quick actions + details panel
 - `QuickActions` - open editor/terminal/github/copy buttons
@@ -160,6 +163,7 @@ POST   /api/scan                  # Trigger project scan
 - `DocumentationAccordion` - collapsible reference files
 
 ### Shared (7)
+
 - `StatusBadge`, `ProjectTypeBadge`, `GoalBadge`, `TechIcon`
 - `Toast`, `EmptyState`, `SearchInput`
 
@@ -177,6 +181,7 @@ Recommendation: **Keep as JSON initially**, normalize later if query performance
 ### Turbo Streams to React
 
 The 10 Turbo Stream templates (inline CRUD for notes, tags, goals) become:
+
 - TanStack Query mutations with `useMutation`
 - Optimistic updates via `onMutate` callbacks
 - Cache invalidation via `queryClient.invalidateQueries`
@@ -188,6 +193,7 @@ Rails version persists filters in the server session. React version should use *
 ### Scanning Engine
 
 Port ProjectScanner + ProjectData nearly 1:1. Key changes:
+
 - `simple-git` library instead of shell backtick commands (eliminates injection risk)
 - `fast-glob` instead of `Find.find` / `Dir.glob`
 - `Bun.file()` / `node:fs` instead of `File.readlines`
@@ -204,6 +210,7 @@ bunx ultracite init --linter biome --pm bun --frameworks react --agents claude
 ```
 
 This sets up:
+
 - `biome.jsonc` extending `ultracite/biome/core` and `ultracite/biome/react`
 - Zero-config defaults: 2-space indent, 80-char lines, semicolons, double quotes, trailing commas
 - TypeScript strictness, no `any` types, unused variable detection
@@ -220,16 +227,71 @@ This sets up:
 5. **`default_scope` on Note** - No Drizzle equivalent. Must explicitly order by `created_at desc` in every note query or wrap in a helper.
 6. **ActiveRecord `find_or_initialize_by`** - No direct Drizzle equivalent. Implement as select-then-insert-or-update.
 
+## Implementation Strategy: Vertical Slices
+
+Rather than building each horizontal layer completely before moving to the next, the port follows a **vertical slice** approach — thin end-to-end slices that validate the stack works together, then widen.
+
+### Slice 1: Foundation (DONE)
+
+**Branch:** `feat/foundation-scaffolding-db-schema`
+**Plan:** `docs/plans/2026-02-08-feat-foundation-scaffolding-and-db-schema-plan.md`
+
+- Bun project with Hono, Drizzle, libSQL, Zod (4 prod deps, 3 dev deps)
+- 6-table Drizzle schema matching Rails reference with all constraints, FKs, indexes
+- SQLite PRAGMAs (foreign_keys, WAL mode)
+- Drizzle `relations()` declarations for relational queries
+- Zod validators for project insert + metadata JSON (15 fields)
+- Health endpoint (`GET /api/health`)
+- Ultracite/Biome linting
+
+### Slice 2: Scanner MVP
+
+- Port `ProjectScanner` (recursive git repo discovery, date filtering)
+- Port `ProjectData` (metadata extraction via `simple-git`)
+- Fix hardcoded cutoff date bug, missing `is_fork` attribute
+- Consolidate `bin/index_all_projects` duplicate logic
+- Minimal CLI `scan` command via `commander`
+- DB persistence via `Project.createOrUpdate`
+
+### Slice 3: Read Path
+
+- Hono API endpoints for listing/filtering projects (`GET /api/projects`, `GET /api/projects/:id`)
+- Port filter query builders (10 scopes with `json_extract()`)
+- `GET /api/filters` and `GET /api/stats` for sidebar data
+- Minimal React UI with Vite + TanStack Query + TanStack Router
+- Projects table with filter bar
+- Install frontend deps: React, Vite, Tailwind 4, TanStack Query/Router
+
+### Slice 4: Write Path
+
+- Tags, notes, goals CRUD API endpoints
+- Toggle pin, track last viewed
+- React mutations with TanStack Query (`useMutation`, optimistic updates)
+- Tag/note/goal manager components
+- URL search params for filter state
+
+### Slice 5: Polish
+
+- Remaining UI (sidebar, detail page, badges, Quick Resume cards)
+- Pagination, sorting
+- Responsive layout + mobile header
+- Vitest + Testing Library test suite
+- CI/CD configuration
+
+### Why Vertical Slices
+
+The port plan has several unknowns (`json_extract()` in Drizzle, `simple-git` behavior, Turbo-to-React mutation patterns) that are better validated early with working code. Each slice produces a runnable system that can be demonstrated and tested, rather than building a complete but untested layer.
+
 ## Effort Estimate
 
-| Area | Effort |
-|------|--------|
-| Project scaffolding + tooling (Bun, Vite, Drizzle, Hono, Ultracite) | 1 day |
-| DB schema + Drizzle models + Zod validation | 2-3 days |
-| Scanning engine port (ProjectScanner + ProjectData) | 2-3 days |
-| Hono API endpoints + filter query builders | 2-3 days |
-| React components (~28) + Tailwind styling | 5-7 days |
-| CLI commands (scan, config) | 1 day |
-| Test suite (Vitest + Testing Library) | 2-4 days |
-| CI/CD + deployment config | 1 day |
-| **Total** | **~16-23 days** |
+| Area                                                                | Effort          |
+| ------------------------------------------------------------------- | --------------- |
+| Project scaffolding + tooling (Bun, Vite, Drizzle, Hono, Ultracite) | 1 day           |
+| DB schema + Drizzle models + Zod validation                         | 2-3 days        |
+| Scanning engine port (ProjectScanner + ProjectData)                 | 2-3 days        |
+| Hono API endpoints + filter query builders                          | 2-3 days        |
+| React components (~28) + Tailwind styling                           | 5-7 days        |
+| CLI commands (scan, config)                                         | 1 day           |
+| Test suite (Vitest + Testing Library)                               | 2-4 days        |
+| CI/CD + deployment config                                           | 1 day           |
+| **Total**                                                           | **~16-23 days** |
