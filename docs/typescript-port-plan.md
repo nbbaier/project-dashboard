@@ -1,27 +1,34 @@
 # TypeScript Port: High-Level Plan
 
+**Last Updated:** 2026-02-08 (revised after stack simplification brainstorm)
+
 ## Overview
 
-Full rewrite of the Project Dashboard from Rails 8.2 to a TypeScript stack with Bun, Hono, React, and SQLite (via Turso/libSQL). The current app is ~3,500 lines across 151 files with a fully functional web UI, CLI scanning tools, and 6 database tables.
+Full rewrite of the Project Dashboard from Rails 8.2 to a TypeScript stack with Bun, Hono, and server-rendered HTML. The current app is ~3,500 lines across 151 files with a fully functional web UI, CLI scanning tools, and 6 database tables.
+
+**Key architectural decision:** The Rails app is fundamentally server-rendered with minimal client-side interactivity (~220 lines of Stimulus JS). The original port plan called for a React SPA with TanStack Query/Router, but this adds unnecessary complexity. Instead, we'll stay close to the Rails model: server-rendered HTML with htmx for dynamic updates.
+
+See: `docs/brainstorms/2026-02-08-simplify-frontend-stack-brainstorm.md` for full rationale.
 
 ## Target Tech Stack
 
-| Layer                | Tool                                    | Replaces                 |
-| -------------------- | --------------------------------------- | ------------------------ |
-| Runtime              | **Bun**                                 | Ruby 3.4                 |
-| API Server           | **Hono**                                | Rails controllers        |
-| Database             | **SQLite via Turso / libSQL**           | SQLite via `sqlite3` gem |
-| ORM                  | **Drizzle**                             | ActiveRecord             |
-| Validation           | **Zod**                                 | AR validations           |
-| Frontend             | **React + Vite**                        | ERB + Turbo + Stimulus   |
-| Styling              | **Tailwind 4** (same)                   | Tailwind 4 (same)        |
-| Data Fetching        | **TanStack Query**                      | Turbo Frames / Streams   |
-| Routing (client)     | **TanStack Router** or **React Router** | Server-rendered pages    |
-| Git Operations       | **simple-git** or Bun `child_process`   | Backtick shell commands  |
-| File Traversal       | **fast-glob** + Node `fs`               | `Find.find` + `Dir.glob` |
-| CLI                  | **commander**                           | Rake tasks               |
-| Testing              | **Vitest + Testing Library**            | (none exist)             |
-| Linting / Formatting | **Ultracite + Biome**                   | RuboCop                  |
+| Layer | Tool | Replaces |
+|-------|------|----------|
+| Runtime | **Bun** | Ruby 3.4 |
+| Server/Router | **Hono** | Rails controllers + routing |
+| Templating | **Hono JSX** | ERB templates |
+| Database | **SQLite via Turso / libSQL** | SQLite via `sqlite3` gem |
+| ORM | **Drizzle** | ActiveRecord |
+| Validation | **Zod** | AR validations |
+| Interactivity | **htmx** | Turbo Frames/Streams |
+| Client JS | **Vanilla JS (~60 lines)** | 7 Stimulus controllers (220 lines) |
+| Styling | **Tailwind 4** (same) | Tailwind 4 (same) |
+| Bundling | **bun build** | Sprockets |
+| Git Operations | **simple-git** | Backtick shell commands |
+| File Traversal | **fast-glob** + Node `fs` | `Find.find` + `Dir.glob` |
+| CLI | **commander** | Rake tasks |
+| Testing | **Vitest + Testing Library** | (none exist) |
+| Linting / Formatting | **Ultracite + Biome** | RuboCop |
 
 ## Current Codebase Inventory
 
@@ -53,47 +60,52 @@ Full rewrite of the Project Dashboard from Rails 8.2 to a TypeScript stack with 
 
 1. **10 ActiveRecord scopes** on Project using SQLite `json_extract()`, `date()`, `substr()`, and `CAST()` for filtering/searching the JSON metadata column
 2. **Filterable concern** that chains scopes together with session-persisted filter state
-3. **10 Turbo Stream templates** for inline CRUD (notes, tags, goals) - paradigm shift to React state
+3. **10 Turbo Stream templates** for inline CRUD (notes, tags, goals) - port to htmx HTML fragments
 4. **5 git CLI commands** executed via shell backticks in ProjectData
 5. **Recursive directory traversal** with pruning rules in ProjectScanner
 
 ## Proposed Project Structure
 
 ```
-your-project-dashboard/
+project-dashboard/
 ├── src/
 │   ├── server/
-│   │   ├── index.ts              # Hono app entry point
+│   │   ├── index.ts              # Hono app entry, Bun.serve({ fetch: app.fetch })
 │   │   ├── db/
 │   │   │   ├── schema.ts         # Drizzle schema (6 tables)
 │   │   │   ├── client.ts         # libSQL/Turso connection
 │   │   │   └── migrations/
 │   │   ├── routes/
-│   │   │   ├── projects.ts       # CRUD + filtering + pagination
-│   │   │   ├── tags.ts           # Tag management
-│   │   │   ├── notes.ts          # Note management
-│   │   │   └── goals.ts          # Goal management
+│   │   │   ├── projects.ts       # HTML routes: index, show, pin/unpin
+│   │   │   ├── tags.ts           # htmx fragment routes for tags
+│   │   │   ├── notes.ts          # htmx fragment routes for notes
+│   │   │   ├── goals.ts          # htmx fragment routes for goals
+│   │   │   └── api.ts            # JSON routes for CLI (scan, health)
+│   │   ├── views/
+│   │   │   ├── layout.tsx        # Base HTML layout (Hono JSX)
+│   │   │   ├── projects/
+│   │   │   │   ├── index.tsx     # Projects list page
+│   │   │   │   ├── show.tsx      # Project detail page
+│   │   │   │   └── _partials/    # Reusable fragments
+│   │   │   │       ├── table.tsx
+│   │   │   │       ├── filter-form.tsx
+│   │   │   │       ├── quick-resume-card.tsx
+│   │   │   │       └── sidebar.tsx
+│   │   │   └── shared/
+│   │   │       ├── badges.tsx    # Status, type, tech badges
+│   │   │       └── icons.tsx     # SVG icons
 │   │   ├── services/
 │   │   │   ├── scanner.ts        # Port of ProjectScanner
 │   │   │   └── project-data.ts   # Port of ProjectData
 │   │   └── lib/
 │   │       ├── filters.ts        # Port of Filterable concern (query builders)
-│   │       └── git.ts            # Git command helpers
-│   ├── client/
-│   │   ├── App.tsx
-│   │   ├── pages/
-│   │   │   ├── ProjectsPage.tsx
-│   │   │   └── ProjectDetailPage.tsx
-│   │   ├── components/
-│   │   │   ├── layout/           # AppLayout, Sidebar, MobileHeader
-│   │   │   ├── projects/         # Table, cards, filters, badges
-│   │   │   └── shared/           # StatusBadge, Toast, EmptyState
-│   │   ├── hooks/                # useProjects, useFilters, useScan
-│   │   └── lib/
-│   │       ├── api.ts            # API client
-│   │       └── types.ts          # Shared types
-│   └── shared/
-│       └── types.ts              # Types shared between server + client
+│   │       └── git.ts            # Git command helpers (simple-git)
+│   └── client/
+│       ├── main.ts               # Entry point: accordion, search debounce, etc.
+│       └── styles.css            # Tailwind imports
+├── public/                       # Built assets land here
+│   ├── main.js                   # Bundled client JS
+│   └── styles.css                # Processed Tailwind CSS
 ├── cli/
 │   ├── index.ts                  # CLI entry point (commander)
 │   └── commands/
@@ -104,119 +116,188 @@ your-project-dashboard/
 ├── package.json
 ├── tsconfig.json
 ├── tailwind.config.ts
-└── vite.config.ts
+└── bunfig.toml                   # bun-plugin-tailwind config
 ```
 
-## API Endpoints (Hono)
+## Routes (Hono)
+
+### HTML Routes (server-rendered pages)
 
 ```
-GET    /api/projects              # List with filters, pagination, sorting
-GET    /api/projects/:id          # Detail with tags, notes, goals
-POST   /api/projects/:id/pin      # Toggle pin
-POST   /api/projects/:id/view     # Track last viewed
-
-POST   /api/projects/:id/tags     # Add tag
-DELETE /api/projects/:id/tags/:id  # Remove tag
-
-POST   /api/projects/:id/notes    # Add note
-DELETE /api/projects/:id/notes/:id # Delete note
-
-POST   /api/projects/:id/goals    # Add goal
-PATCH  /api/projects/:id/goals/:id # Update goal status
-DELETE /api/projects/:id/goals/:id # Delete goal
-
-GET    /api/filters               # Available tech stacks, types for dropdowns
-GET    /api/stats                  # Sidebar counts (active, stalled, etc.)
-POST   /api/scan                  # Trigger project scan
+GET  /                    → redirect to /projects
+GET  /projects            → index page (full HTML)
+GET  /projects/:id        → detail page (full HTML)
+POST /projects/:id/pin    → toggle pin, redirect back
 ```
 
-## React Components (~28)
+### htmx Fragment Routes (return HTML snippets)
 
-### Layout (3)
+```
+POST   /projects/:id/tags          → add tag, return updated tags HTML
+DELETE /projects/:id/tags/:tagId   → remove tag, return updated tags HTML
 
-- `AppLayout` - sidebar + main content wrapper
-- `Sidebar` - nav, pinned projects, recently viewed, smart groups
-- `MobileHeader` - hamburger menu + mobile sidebar
+POST   /projects/:id/notes         → add note, return updated notes HTML
+DELETE /projects/:id/notes/:noteId → delete note, return updated notes HTML
 
-### Projects Index (8)
+POST   /projects/:id/goals         → add goal, return updated goals HTML
+PATCH  /projects/:id/goals/:goalId → update status, return updated goals HTML
+DELETE /projects/:id/goals/:goalId → delete goal, return updated goals HTML
+```
 
-- `ProjectsPage` - page container
-- `QuickResumeSection` - 3-col grid of recent project cards
-- `QuickResumeCard` - individual card
-- `FilterBar` - search + dropdown filters
-- `ActiveFilterPills` - removable filter tags
-- `ProjectsTable` - sortable table with clickable rows
-- `ProjectRow` - table row
-- `Pagination` - page navigation
+### JSON API Routes (for CLI)
 
-### Project Detail (10)
+```
+POST /api/scan    → trigger project scan, return JSON status
+GET  /api/health  → health check, return JSON
+```
 
-- `ProjectDetailPage` - page container with grid layout
-- `ProjectSidebar` - quick actions + details panel
-- `QuickActions` - open editor/terminal/github/copy buttons
-- `ProjectDetails` - path, type, commit count
-- `TagManager` - tag list + add form
-- `NoteManager` - notes list + add form
-- `GoalManager` - goals list + add form + status dropdown
-- `TechStackBadges` - tech stack display
-- `ActivityTimeline` - commit history
-- `DocumentationAccordion` - collapsible reference files
+## Server Templates (Hono JSX)
 
-### Shared (7)
+Port the 30 ERB templates to Hono JSX (`.tsx` files that render to HTML strings on the server). The conversion is nearly mechanical:
 
-- `StatusBadge`, `ProjectTypeBadge`, `GoalBadge`, `TechIcon`
-- `Toast`, `EmptyState`, `SearchInput`
+| Rails ERB | Hono JSX | Notes |
+|-----------|----------|-------|
+| `<%= project.name %>` | `{project.name}` | JS expressions |
+| `<% if condition %>` | `{condition && ...}` | Conditional rendering |
+| `<% @projects.each do \|p\| %>` | `{projects.map(p => ...)}` | Array iteration |
+| `<%= link_to "Text", path %>` | `<a href={path}>Text</a>` | Standard HTML |
+| `<%= render "partial" %>` | `<Partial />` | Component composition |
+| `<%= button_to path, method: :post %>` | `<form method="POST" action={path}>` | HTML forms |
+| Turbo Frame tag | htmx attributes | `hx-post`, `hx-target`, `hx-swap` |
+
+Tailwind classes copy directly — no changes needed.
+
+## Client-Side Interactivity
+
+### htmx for Dynamic Updates
+
+Replace Turbo Frames with htmx for inline CRUD:
+
+```html
+<!-- Adding a tag -->
+<form hx-post="/projects/123/tags" hx-target="#project-tags" hx-swap="innerHTML">
+  <input name="tag_name" />
+  <button type="submit">Add Tag</button>
+</form>
+
+<div id="project-tags">
+  <!-- Server returns updated HTML fragment for this div -->
+</div>
+```
+
+### Vanilla JS for Micro-Interactions
+
+Port the 7 Stimulus controllers (~220 lines) to vanilla JS (~60 lines):
+
+| Stimulus Controller | Vanilla JS | Lines |
+|---------------------|------------|-------|
+| `accordion_controller.js` | Toggle `.hidden` class on click | ~10 |
+| `clickable_rows_controller.js` | `addEventListener('click')` on rows | ~10 |
+| `search_form_controller.js` | `setTimeout` debounce on input | ~15 |
+| `quick_actions_controller.js` | Clipboard API, shell commands | ~20 |
+| `note_input_controller.js` | Auto-resize textarea | ~5 |
+| `tag_input_controller.js` | Enter key submit | ~5 |
+
+htmx handles the remaining controllers (form submissions, DOM updates).
 
 ## Key Migration Decisions
 
 ### JSON Metadata Column
 
-The `metadata` JSON column stores ~15 fields and is queried 6+ ways with `json_extract()`. Two options:
+Keep as JSON. Use Drizzle's `sql` template literals for `json_extract()` queries:
 
-1. **Keep as JSON** - Use Drizzle's `sql` template literals for `json_extract()` queries. Turso/libSQL supports the same SQLite JSON functions. Least effort, preserves current flexibility.
-2. **Normalize into columns** - Extract frequently-queried fields (tech_stack, inferred_type, description, deployment_status, commit_count) into proper columns. Better type safety and indexing, but requires a schema redesign.
+```typescript
+// ActiveRecord: Project.where("json_extract(metadata, '$.tech_stack') LIKE ?", "%ruby%")
+// Drizzle:
+db.select().from(projects).where(
+  sql`json_extract(${projects.metadata}, '$.tech_stack') LIKE '%ruby%'`
+)
+```
 
-Recommendation: **Keep as JSON initially**, normalize later if query performance becomes an issue.
+libSQL supports all SQLite JSON functions. Normalize later if needed.
 
-### Turbo Streams to React
+### Turbo Streams → htmx
 
-The 10 Turbo Stream templates (inline CRUD for notes, tags, goals) become:
+Direct mapping:
 
-- TanStack Query mutations with `useMutation`
-- Optimistic updates via `onMutate` callbacks
-- Cache invalidation via `queryClient.invalidateQueries`
+| Rails Turbo | htmx Equivalent |
+|-------------|-----------------|
+| `<%= turbo_frame_tag "project_tags" %>` | `<div id="project-tags">` |
+| `data: { turbo_frame: "project_tags" }` | `hx-target="#project-tags"` |
+| Turbo Stream `replace` action | `hx-swap="innerHTML"` |
+| `render partial, formats: [:turbo_stream]` | Return HTML fragment from route |
 
 ### Filter State
 
-Rails version persists filters in the server session. React version should use **URL search params** (`useSearchParams`) so filters are shareable and bookmarkable.
+Rails persists filters in session. Port to URL query params:
+
+```typescript
+// Rails: session[:filters] = { status: 'active', tech: 'ruby' }
+// Hono: /projects?status=active&tech=ruby
+app.get('/projects', async (c) => {
+  const { status, tech, search } = c.req.query()
+  // Apply filters to DB query
+})
+```
+
+Filters remain shareable and bookmarkable. Hono JSX templates read `c.req.query()` to pre-fill filter form.
 
 ### Scanning Engine
 
-Port ProjectScanner + ProjectData nearly 1:1. Key changes:
+Port ProjectScanner + ProjectData nearly 1:1:
 
-- `simple-git` library instead of shell backtick commands (eliminates injection risk)
-- `fast-glob` instead of `Find.find` / `Dir.glob`
-- `Bun.file()` / `node:fs` instead of `File.readlines`
-- Fix the hardcoded cutoff date bug (line 51 of project_data.rb)
-- Fix missing `is_fork` attribute (referenced but never defined)
-- Consolidate `bin/index_all_projects` (duplicate scanning logic) into the main scanner
+| Ruby | TypeScript |
+|------|------------|
+| `Find.find(base_path)` | `fast-glob` with `**/.git` pattern |
+| `` `git log --format='%an'` `` | `simpleGit().log()` |
+| `File.readlines().grep(/regex/)` | `Bun.file().text().match(/regex/)` |
+| `Date.parse` | `date-fns` `parseISO` |
+
+**Fixes to apply:**
+- Remove hardcoded cutoff date (project_data.rb:51)
+- Define missing `is_fork` attribute
+- Consolidate `bin/index_all_projects` into ProjectScanner
+
+### Static Assets & Bundling
+
+Build client assets with `bun build`:
+
+```json
+// package.json scripts
+{
+  "build:client": "bun build src/client/main.ts --outdir public --target browser",
+  "build:css": "bun build src/client/styles.css --outdir public",
+  "build": "bun run build:client && bun run build:css"
+}
+```
+
+`bunfig.toml` for Tailwind processing:
+
+```toml
+[build]
+plugins = ["bun-plugin-tailwind"]
+```
+
+Serve `public/` via Hono's `serveStatic()` middleware. In dev, use `bun build --watch` or re-run on file changes.
+
+htmx can be loaded from CDN (`<script src="https://unpkg.com/htmx.org@2.0.3"></script>`) or bundled.
 
 ## Linting & Formatting Setup
 
-Using **Ultracite with Biome** as the linting/formatting provider:
+Using **Ultracite with Biome**:
 
 ```bash
-bunx ultracite init --linter biome --pm bun --frameworks react --agents claude
+bunx ultracite init --linter biome --pm bun --agents claude
 ```
 
-This sets up:
+Note: **Don't use `--frameworks react`** since we're not using client-side React. Hono JSX is server-only.
 
-- `biome.jsonc` extending `ultracite/biome/core` and `ultracite/biome/react`
+This sets up:
+- `biome.jsonc` extending `ultracite/biome/core`
 - Zero-config defaults: 2-space indent, 80-char lines, semicolons, double quotes, trailing commas
 - TypeScript strictness, no `any` types, unused variable detection
 - Accessibility checks (ARIA, semantic HTML)
-- Auto-fix for unused imports, block statements, Tailwind class sorting
-- Pre-commit hooks via integration option (Husky or Lefthook)
+- Auto-fix for unused imports, block statements
 
 ## Known Risks & Gotchas
 
@@ -226,6 +307,45 @@ This sets up:
 4. **Shell pipe in git command** - `git log --format='%an' | sort -u` relies on shell piping. Use `Array.from(new Set(...))` in TS instead.
 5. **`default_scope` on Note** - No Drizzle equivalent. Must explicitly order by `created_at desc` in every note query or wrap in a helper.
 6. **ActiveRecord `find_or_initialize_by`** - No direct Drizzle equivalent. Implement as select-then-insert-or-update.
+7. **Hono JSX async components** - Hono JSX supports `async` components natively, but return values must be `Promise<JSX.Element>`. Ensure DB queries are awaited properly.
+8. **htmx CSRF** - Rails has built-in CSRF protection. With Hono, add CSRF middleware (e.g., `hono/csrf`) and include token in htmx requests via `hx-headers`.
+
+## Vertical Slice Strategy
+
+Rather than build horizontally (all models, all routes, all templates), implement 5 vertical slices:
+
+### Slice 1: Foundation (DONE)
+- Bun project setup
+- Drizzle schema + migrations
+- DB client + Zod validators
+- Health endpoint
+- **Status:** Implemented on `feat/foundation-scaffolding-db-schema` branch, needs P1/P2 review fixes
+
+### Slice 2: Scanner MVP
+- Port ProjectScanner + ProjectData
+- CLI `scan` command
+- Test on real repos
+- Fixes: hardcoded cutoff date, missing `is_fork`, consolidate `bin/index_all_projects`
+
+### Slice 3: Read Path
+- Hono routes: `GET /projects`, `GET /projects/:id`
+- Server templates: index + detail pages (Hono JSX)
+- Filter form with query param handling
+- Basic layout + Tailwind styling
+- Vanilla JS: accordion, clickable rows, search debounce
+
+### Slice 4: Write Path
+- htmx inline CRUD routes for tags, notes, goals
+- Pin/unpin project
+- HTML fragment templates
+- Copy path, quick actions (vanilla JS)
+
+### Slice 5: Polish
+- Sidebar layout (pinned projects, smart groups)
+- Dark mode toggle
+- Pagination + sorting
+- Tests (Vitest)
+- CI/CD
 
 ## Implementation Strategy: Vertical Slices
 
@@ -284,14 +404,16 @@ The port plan has several unknowns (`json_extract()` in Drizzle, `simple-git` be
 
 ## Effort Estimate
 
-| Area                                                                | Effort          |
-| ------------------------------------------------------------------- | --------------- |
-| Project scaffolding + tooling (Bun, Vite, Drizzle, Hono, Ultracite) | 1 day           |
-| DB schema + Drizzle models + Zod validation                         | 2-3 days        |
-| Scanning engine port (ProjectScanner + ProjectData)                 | 2-3 days        |
-| Hono API endpoints + filter query builders                          | 2-3 days        |
-| React components (~28) + Tailwind styling                           | 5-7 days        |
-| CLI commands (scan, config)                                         | 1 day           |
-| Test suite (Vitest + Testing Library)                               | 2-4 days        |
-| CI/CD + deployment config                                           | 1 day           |
-| **Total**                                                           | **~16-23 days** |
+| Area | Original (SPA) | Revised (Server) | Delta | Notes |
+|------|----------------|------------------|-------|-------|
+| Project scaffolding | 1 day | 1 day | Same | Bun, Hono, Drizzle, Ultracite |
+| DB schema + validation | 2-3 days | 2-3 days | Same | Slice 1 done |
+| Scanning engine | 2-3 days | 2-3 days | Same | Nearly 1:1 port |
+| Routes + filtering | 2-3 days | 2-3 days | Same | Routes exist, return HTML not JSON |
+| Frontend | 5-7 days | 2-3 days | **-3 to -4 days** | Server templates + htmx, no client state |
+| CLI | 1 day | 1 day | Same | Commander + JSON API routes |
+| Testing | 2-4 days | 2-3 days | Slightly less | No React component tests |
+| CI/CD | 1 day | 1 day | Same | GitHub Actions, Docker |
+| **Total** | **16-23 days** | **13-18 days** | **~3-5 days saved** |
+
+The server-rendered approach is simpler and faster to implement than the original SPA plan.
