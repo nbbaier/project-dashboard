@@ -13,7 +13,4 @@ app.get("/api/health", async (c) => {
   }
 });
 
-export default {
-  port: 3001,
-  fetch: app.fetch,
-};
+export default { port: 3001, fetch: app.fetch };
