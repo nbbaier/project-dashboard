@@ -54,16 +54,16 @@ export const projects = sqliteTable(
     name: text("name").notNull(),
     lastCommitDate: text("last_commit_date").notNull(),
     lastCommitMessage: text("last_commit_message"),
-    metadata: text("metadata").$type<ProjectMetadata>(),
+    metadata: text("metadata", { mode: "json" }).$type<ProjectMetadata>(),
     isFork: integer("is_fork", { mode: "boolean" }).notNull().default(false),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
     lastViewedAt: integer("last_viewed_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`(unixepoch() * 1000)`),
     updatedAt: integer("updated_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`(unixepoch() * 1000)`),
   },
   (table) => [
     index("index_projects_on_is_fork").on(table.isFork),
@@ -78,10 +78,10 @@ export const tags = sqliteTable("tags", {
   name: text("name").notNull().unique(),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .default(sql`(unixepoch() * 1000)`),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .default(sql`(unixepoch() * 1000)`),
 });
 
 export const taggings = sqliteTable(
@@ -96,10 +96,10 @@ export const taggings = sqliteTable(
       .references(() => tags.id, { onDelete: "cascade" }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`(unixepoch() * 1000)`),
     updatedAt: integer("updated_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`(unixepoch() * 1000)`),
   },
   (table) => [
     uniqueIndex("index_taggings_on_project_id_and_tag_id").on(
@@ -121,10 +121,10 @@ export const notes = sqliteTable(
     content: text("content").notNull(),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`(unixepoch() * 1000)`),
     updatedAt: integer("updated_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`(unixepoch() * 1000)`),
   },
   (table) => [
     index("index_notes_on_project_id_and_created_at").on(
@@ -141,10 +141,10 @@ export const goals = sqliteTable("goals", {
   description: text("description"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .default(sql`(unixepoch() * 1000)`),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
-    .default(sql`(unixepoch())`),
+    .default(sql`(unixepoch() * 1000)`),
 });
 
 export const projectGoals = sqliteTable(
@@ -162,10 +162,10 @@ export const projectGoals = sqliteTable(
       .default("not_started"),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`(unixepoch() * 1000)`),
     updatedAt: integer("updated_at", { mode: "timestamp" })
       .notNull()
-      .default(sql`(unixepoch())`),
+      .default(sql`(unixepoch() * 1000)`),
   },
   (table) => [
     uniqueIndex("index_project_goals_on_project_id_and_goal_id").on(
