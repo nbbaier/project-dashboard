@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -42,7 +42,6 @@ export interface ProjectMetadata {
   aiDocsCount?: number;
   claudeDescription?: string | null;
   errors?: string[];
-  [key: string]: unknown;
 }
 
 // -- Tables --
@@ -158,7 +157,9 @@ export const projectGoals = sqliteTable(
     goalId: integer("goal_id")
       .notNull()
       .references(() => goals.id, { onDelete: "cascade" }),
-    status: text("status").notNull().default("not_started"),
+    status: text("status", { enum: PROJECT_GOAL_STATUSES })
+      .notNull()
+      .default("not_started"),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .default(sql`(unixepoch())`),
@@ -175,3 +176,48 @@ export const projectGoals = sqliteTable(
     index("index_project_goals_on_goal_id").on(table.goalId),
   ]
 );
+
+// -- Relations --
+
+export const projectsRelations = relations(projects, ({ many }) => ({
+  taggings: many(taggings),
+  notes: many(notes),
+  projectGoals: many(projectGoals),
+}));
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  taggings: many(taggings),
+}));
+
+export const taggingsRelations = relations(taggings, ({ one }) => ({
+  project: one(projects, {
+    fields: [taggings.projectId],
+    references: [projects.id],
+  }),
+  tag: one(tags, {
+    fields: [taggings.tagId],
+    references: [tags.id],
+  }),
+}));
+
+export const notesRelations = relations(notes, ({ one }) => ({
+  project: one(projects, {
+    fields: [notes.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const goalsRelations = relations(goals, ({ many }) => ({
+  projectGoals: many(projectGoals),
+}));
+
+export const projectGoalsRelations = relations(projectGoals, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectGoals.projectId],
+    references: [projects.id],
+  }),
+  goal: one(goals, {
+    fields: [projectGoals.goalId],
+    references: [goals.id],
+  }),
+}));

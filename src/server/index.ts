@@ -5,8 +5,12 @@ import { db } from "./db/client.ts";
 const app = new Hono();
 
 app.get("/api/health", async (c) => {
-  await db.run(sql`SELECT 1`);
-  return c.json({ status: "ok" });
+  try {
+    await db.run(sql`SELECT 1`);
+    return c.json({ status: "ok" });
+  } catch {
+    return c.json({ status: "error" }, 503);
+  }
 });
 
 export default {
