@@ -11,7 +11,7 @@ const app = new Hono();
 // Middleware order: logger -> secure headers -> static files -> routes
 app.use(logger());
 app.use(secureHeaders());
-app.use("/", serveStatic({ root: "./public" }));
+app.use("/*", serveStatic({ root: "./public" }));
 
 // Health check
 app.get("/api/health", async (c) => {
