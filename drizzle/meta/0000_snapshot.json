@@ -48,9 +48,7 @@
       "indexes": {
         "goals_name_unique": {
           "name": "goals_name_unique",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "isUnique": true
         }
       },
@@ -103,10 +101,7 @@
       "indexes": {
         "index_notes_on_project_id_and_created_at": {
           "name": "index_notes_on_project_id_and_created_at",
-          "columns": [
-            "project_id",
-            "created_at"
-          ],
+          "columns": ["project_id", "created_at"],
           "isUnique": false
         }
       },
@@ -115,12 +110,8 @@
           "name": "notes_project_id_projects_id_fk",
           "tableFrom": "notes",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -181,17 +172,12 @@
       "indexes": {
         "index_project_goals_on_project_id_and_goal_id": {
           "name": "index_project_goals_on_project_id_and_goal_id",
-          "columns": [
-            "project_id",
-            "goal_id"
-          ],
+          "columns": ["project_id", "goal_id"],
           "isUnique": true
         },
         "index_project_goals_on_goal_id": {
           "name": "index_project_goals_on_goal_id",
-          "columns": [
-            "goal_id"
-          ],
+          "columns": ["goal_id"],
           "isUnique": false
         }
       },
@@ -200,12 +186,8 @@
           "name": "project_goals_project_id_projects_id_fk",
           "tableFrom": "project_goals",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -213,12 +195,8 @@
           "name": "project_goals_goal_id_goals_id_fk",
           "tableFrom": "project_goals",
           "tableTo": "goals",
-          "columnsFrom": [
-            "goal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["goal_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -315,30 +293,22 @@
       "indexes": {
         "projects_path_unique": {
           "name": "projects_path_unique",
-          "columns": [
-            "path"
-          ],
+          "columns": ["path"],
           "isUnique": true
         },
         "index_projects_on_name": {
           "name": "index_projects_on_name",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "isUnique": false
         },
         "index_projects_on_last_commit_date": {
           "name": "index_projects_on_last_commit_date",
-          "columns": [
-            "last_commit_date"
-          ],
+          "columns": ["last_commit_date"],
           "isUnique": false
         },
         "index_projects_on_last_viewed_at": {
           "name": "index_projects_on_last_viewed_at",
-          "columns": [
-            "last_viewed_at"
-          ],
+          "columns": ["last_viewed_at"],
           "isUnique": false
         }
       },
@@ -391,17 +361,12 @@
       "indexes": {
         "index_taggings_on_project_id_and_tag_id": {
           "name": "index_taggings_on_project_id_and_tag_id",
-          "columns": [
-            "project_id",
-            "tag_id"
-          ],
+          "columns": ["project_id", "tag_id"],
           "isUnique": true
         },
         "index_taggings_on_tag_id": {
           "name": "index_taggings_on_tag_id",
-          "columns": [
-            "tag_id"
-          ],
+          "columns": ["tag_id"],
           "isUnique": false
         }
       },
@@ -410,12 +375,8 @@
           "name": "taggings_project_id_projects_id_fk",
           "tableFrom": "taggings",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -423,12 +384,8 @@
           "name": "taggings_tag_id_tags_id_fk",
           "tableFrom": "taggings",
           "tableTo": "tags",
-          "columnsFrom": [
-            "tag_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tag_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -474,9 +431,7 @@
       "indexes": {
         "tags_name_unique": {
           "name": "tags_name_unique",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "isUnique": true
         }
       },
