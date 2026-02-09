@@ -273,8 +273,8 @@ Configuration:
 ### Internal
 
 - Port plan: `docs/typescript-port-plan.md`
-- Rails schema: `~/Code/your-project-dashboard/db/schema.rb`
-- Rails models: `~/Code/your-project-dashboard/app/models/*.rb`
+- Rails schema: `db/schema.rb` (in btca resource `your-project-dashboard`)
+- Rails models: `app/models/*.rb` (in btca resource `your-project-dashboard`)
 
 ### External
 
