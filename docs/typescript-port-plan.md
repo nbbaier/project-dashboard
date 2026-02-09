@@ -34,18 +34,18 @@ See: `docs/brainstorms/2026-02-08-simplify-frontend-stack-brainstorm.md` for ful
 
 ### What Exists
 
-| Component | Size | Files |
-|-----------|------|-------|
-| ActiveRecord models | 230 lines | 6 models + ApplicationRecord |
-| Scanning engine (lib/) | 660 lines | ProjectScanner, ProjectData |
-| Controllers + concern | 313 lines | 4 controllers + Filterable |
-| ERB templates | 1,124 lines | 30 templates |
-| Stimulus JS | 220 lines | 7 controllers |
-| Rake tasks | 58 lines | 1 file, 2 tasks |
-| Helper methods | 149 lines | ProjectsHelper |
-| Standalone indexer | 324 lines | bin/index_all_projects |
-| Migrations | 7 files | 6 tables |
-| **Total** | **~3,500 lines** | **151 files** |
+| Component              | Size             | Files                        |
+| ---------------------- | ---------------- | ---------------------------- |
+| ActiveRecord models    | 230 lines        | 6 models + ApplicationRecord |
+| Scanning engine (lib/) | 660 lines        | ProjectScanner, ProjectData  |
+| Controllers + concern  | 313 lines        | 4 controllers + Filterable   |
+| ERB templates          | 1,124 lines      | 30 templates                 |
+| Stimulus JS            | 220 lines        | 7 controllers                |
+| Rake tasks             | 58 lines         | 1 file, 2 tasks              |
+| Helper methods         | 149 lines        | ProjectsHelper               |
+| Standalone indexer     | 324 lines        | bin/index_all_projects       |
+| Migrations             | 7 files          | 6 tables                     |
+| **Total**              | **~3,500 lines** | **151 files**                |
 
 ### Database Schema (6 tables)
 
@@ -346,6 +346,61 @@ Rather than build horizontally (all models, all routes, all templates), implemen
 - Pagination + sorting
 - Tests (Vitest)
 - CI/CD
+
+## Implementation Strategy: Vertical Slices
+
+Rather than building each horizontal layer completely before moving to the next, the port follows a **vertical slice** approach — thin end-to-end slices that validate the stack works together, then widen.
+
+### Slice 1: Foundation (DONE)
+
+**Branch:** `feat/foundation-scaffolding-db-schema`
+**Plan:** `docs/plans/2026-02-08-feat-foundation-scaffolding-and-db-schema-plan.md`
+
+- Bun project with Hono, Drizzle, libSQL, Zod (4 prod deps, 3 dev deps)
+- 6-table Drizzle schema matching Rails reference with all constraints, FKs, indexes
+- SQLite PRAGMAs (foreign_keys, WAL mode)
+- Drizzle `relations()` declarations for relational queries
+- Zod validators for project insert + metadata JSON (15 fields)
+- Health endpoint (`GET /api/health`)
+- Ultracite/Biome linting
+
+### Slice 2: Scanner MVP
+
+- Port `ProjectScanner` (recursive git repo discovery, date filtering)
+- Port `ProjectData` (metadata extraction via `simple-git`)
+- Fix hardcoded cutoff date bug, missing `is_fork` attribute
+- Consolidate `bin/index_all_projects` duplicate logic
+- Minimal CLI `scan` command via `commander`
+- DB persistence via `Project.createOrUpdate`
+
+### Slice 3: Read Path
+
+- Hono API endpoints for listing/filtering projects (`GET /api/projects`, `GET /api/projects/:id`)
+- Port filter query builders (10 scopes with `json_extract()`)
+- `GET /api/filters` and `GET /api/stats` for sidebar data
+- Minimal React UI with Vite + TanStack Query + TanStack Router
+- Projects table with filter bar
+- Install frontend deps: React, Vite, Tailwind 4, TanStack Query/Router
+
+### Slice 4: Write Path
+
+- Tags, notes, goals CRUD API endpoints
+- Toggle pin, track last viewed
+- React mutations with TanStack Query (`useMutation`, optimistic updates)
+- Tag/note/goal manager components
+- URL search params for filter state
+
+### Slice 5: Polish
+
+- Remaining UI (sidebar, detail page, badges, Quick Resume cards)
+- Pagination, sorting
+- Responsive layout + mobile header
+- Vitest + Testing Library test suite
+- CI/CD configuration
+
+### Why Vertical Slices
+
+The port plan has several unknowns (`json_extract()` in Drizzle, `simple-git` behavior, Turbo-to-React mutation patterns) that are better validated early with working code. Each slice produces a runnable system that can be demonstrated and tested, rather than building a complete but untested layer.
 
 ## Effort Estimate
 

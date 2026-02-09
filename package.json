@@ -1,0 +1,25 @@
+{
+  "name": "project-dashboard",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot src/server/index.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "lint": "ultracite check",
+    "lint:fix": "ultracite fix"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.11.9",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.13",
+    "@types/bun": "latest",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "^5.9.3",
+    "ultracite": "7.1.5"
+  }
+}
