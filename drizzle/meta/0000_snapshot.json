@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "64cfd6a7-fe00-41f5-a419-546eebe12454",
+  "id": "564ba1c5-2b4d-4f7a-ae56-6a345063032e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "goals": {
@@ -103,11 +103,6 @@
           "name": "index_notes_on_project_id_and_created_at",
           "columns": ["project_id", "created_at"],
           "isUnique": false
-        },
-        "index_notes_on_project_id": {
-          "name": "index_notes_on_project_id",
-          "columns": ["project_id"],
-          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -179,11 +174,6 @@
           "name": "index_project_goals_on_project_id_and_goal_id",
           "columns": ["project_id", "goal_id"],
           "isUnique": true
-        },
-        "index_project_goals_on_project_id": {
-          "name": "index_project_goals_on_project_id",
-          "columns": ["project_id"],
-          "isUnique": false
         },
         "index_project_goals_on_goal_id": {
           "name": "index_project_goals_on_goal_id",
@@ -306,9 +296,9 @@
           "columns": ["path"],
           "isUnique": true
         },
-        "index_projects_on_is_fork": {
-          "name": "index_projects_on_is_fork",
-          "columns": ["is_fork"],
+        "index_projects_on_name": {
+          "name": "index_projects_on_name",
+          "columns": ["name"],
           "isUnique": false
         },
         "index_projects_on_last_commit_date": {
@@ -319,11 +309,6 @@
         "index_projects_on_last_viewed_at": {
           "name": "index_projects_on_last_viewed_at",
           "columns": ["last_viewed_at"],
-          "isUnique": false
-        },
-        "index_projects_on_pinned": {
-          "name": "index_projects_on_pinned",
-          "columns": ["pinned"],
           "isUnique": false
         }
       },
@@ -378,11 +363,6 @@
           "name": "index_taggings_on_project_id_and_tag_id",
           "columns": ["project_id", "tag_id"],
           "isUnique": true
-        },
-        "index_taggings_on_project_id": {
-          "name": "index_taggings_on_project_id",
-          "columns": ["project_id"],
-          "isUnique": false
         },
         "index_taggings_on_tag_id": {
           "name": "index_taggings_on_tag_id",

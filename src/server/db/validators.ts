@@ -6,7 +6,7 @@ export const projectGoalStatusEnum = z.enum(PROJECT_GOAL_STATUSES);
 export const insertProjectSchema = z.object({
   path: z.string().min(1),
   name: z.string().min(1),
-  lastCommitDate: z.string().min(1),
+  lastCommitDate: z.iso.datetime(),
   lastCommitMessage: z.string().optional(),
   isFork: z.boolean().optional(),
   pinned: z.boolean().optional(),
@@ -40,3 +40,5 @@ export const projectMetadataSchema = z
     errors: z.array(z.string()).optional(),
   })
   .passthrough();
+
+export type ProjectMetadata = z.infer<typeof projectMetadataSchema>;

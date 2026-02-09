@@ -17,7 +17,6 @@ CREATE TABLE `notes` (
 );
 --> statement-breakpoint
 CREATE INDEX `index_notes_on_project_id_and_created_at` ON `notes` (`project_id`,`created_at`);--> statement-breakpoint
-CREATE INDEX `index_notes_on_project_id` ON `notes` (`project_id`);--> statement-breakpoint
 CREATE TABLE `project_goals` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`project_id` integer NOT NULL,
@@ -30,7 +29,6 @@ CREATE TABLE `project_goals` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `index_project_goals_on_project_id_and_goal_id` ON `project_goals` (`project_id`,`goal_id`);--> statement-breakpoint
-CREATE INDEX `index_project_goals_on_project_id` ON `project_goals` (`project_id`);--> statement-breakpoint
 CREATE INDEX `index_project_goals_on_goal_id` ON `project_goals` (`goal_id`);--> statement-breakpoint
 CREATE TABLE `projects` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -47,10 +45,9 @@ CREATE TABLE `projects` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `projects_path_unique` ON `projects` (`path`);--> statement-breakpoint
-CREATE INDEX `index_projects_on_is_fork` ON `projects` (`is_fork`);--> statement-breakpoint
+CREATE INDEX `index_projects_on_name` ON `projects` (`name`);--> statement-breakpoint
 CREATE INDEX `index_projects_on_last_commit_date` ON `projects` (`last_commit_date`);--> statement-breakpoint
 CREATE INDEX `index_projects_on_last_viewed_at` ON `projects` (`last_viewed_at`);--> statement-breakpoint
-CREATE INDEX `index_projects_on_pinned` ON `projects` (`pinned`);--> statement-breakpoint
 CREATE TABLE `taggings` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`project_id` integer NOT NULL,
@@ -62,7 +59,6 @@ CREATE TABLE `taggings` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `index_taggings_on_project_id_and_tag_id` ON `taggings` (`project_id`,`tag_id`);--> statement-breakpoint
-CREATE INDEX `index_taggings_on_project_id` ON `taggings` (`project_id`);--> statement-breakpoint
 CREATE INDEX `index_taggings_on_tag_id` ON `taggings` (`tag_id`);--> statement-breakpoint
 CREATE TABLE `tags` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -71,4 +67,22 @@ CREATE TABLE `tags` (
 	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `tags_name_unique` ON `tags` (`name`);
+CREATE UNIQUE INDEX `tags_name_unique` ON `tags` (`name`);--> statement-breakpoint
+CREATE TRIGGER trg_projects_updated_at AFTER UPDATE ON `projects`
+WHEN NEW.`updated_at` = OLD.`updated_at`
+BEGIN UPDATE `projects` SET `updated_at` = unixepoch() WHERE `id` = NEW.`id`; END;--> statement-breakpoint
+CREATE TRIGGER trg_tags_updated_at AFTER UPDATE ON `tags`
+WHEN NEW.`updated_at` = OLD.`updated_at`
+BEGIN UPDATE `tags` SET `updated_at` = unixepoch() WHERE `id` = NEW.`id`; END;--> statement-breakpoint
+CREATE TRIGGER trg_taggings_updated_at AFTER UPDATE ON `taggings`
+WHEN NEW.`updated_at` = OLD.`updated_at`
+BEGIN UPDATE `taggings` SET `updated_at` = unixepoch() WHERE `id` = NEW.`id`; END;--> statement-breakpoint
+CREATE TRIGGER trg_notes_updated_at AFTER UPDATE ON `notes`
+WHEN NEW.`updated_at` = OLD.`updated_at`
+BEGIN UPDATE `notes` SET `updated_at` = unixepoch() WHERE `id` = NEW.`id`; END;--> statement-breakpoint
+CREATE TRIGGER trg_goals_updated_at AFTER UPDATE ON `goals`
+WHEN NEW.`updated_at` = OLD.`updated_at`
+BEGIN UPDATE `goals` SET `updated_at` = unixepoch() WHERE `id` = NEW.`id`; END;--> statement-breakpoint
+CREATE TRIGGER trg_project_goals_updated_at AFTER UPDATE ON `project_goals`
+WHEN NEW.`updated_at` = OLD.`updated_at`
+BEGIN UPDATE `project_goals` SET `updated_at` = unixepoch() WHERE `id` = NEW.`id`; END;

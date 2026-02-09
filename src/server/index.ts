@@ -1,8 +1,11 @@
 import { sql } from "drizzle-orm";
 import { Hono } from "hono";
+import { secureHeaders } from "hono/secure-headers";
 import { db } from "./db/client.ts";
 
 const app = new Hono();
+
+app.use(secureHeaders());
 
 app.get("/api/health", async (c) => {
   try {
