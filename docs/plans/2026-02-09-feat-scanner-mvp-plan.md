@@ -272,8 +272,8 @@ When a second command arrives, split into `cli/index.ts` + `cli/commands/`. Not 
 
 ### Rails Reference
 
-- `~/Code/your-project-dashboard/lib/project_scanner.rb` — 204 lines, repo discovery + orchestration
-- `~/Code/your-project-dashboard/lib/project_data.rb` — 398 lines, metadata extraction
-- `~/Code/your-project-dashboard/bin/index_all_projects` — 324 lines, standalone indexer (consolidate into above)
-- `~/Code/your-project-dashboard/lib/tasks/projects.rake` — CLI config (env vars, defaults)
-- `~/Code/your-project-dashboard/app/models/project.rb:67-76` — `create_or_update_from_data` upsert pattern
+- `lib/project_scanner.rb` — 204 lines, repo discovery + orchestration (in btca resource `your-project-dashboard`)
+- `lib/project_data.rb` — 398 lines, metadata extraction (in btca resource `your-project-dashboard`)
+- `bin/index_all_projects` — 324 lines, standalone indexer (consolidate into above) (in btca resource `your-project-dashboard`)
+- `lib/tasks/projects.rake` — CLI config (env vars, defaults) (in btca resource `your-project-dashboard`)
+- `app/models/project.rb:67-76` — `create_or_update_from_data` upsert pattern (in btca resource `your-project-dashboard`)

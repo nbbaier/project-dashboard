@@ -1,0 +1,13 @@
+{
+  "$schema": "https://btca.dev/btca.schema.json",
+  "resources": [
+    {
+      "type": "git",
+      "name": "your-project-dashboard",
+      "url": "https://github.com/aviflombaum/your-project-dashboard",
+      "branch": "main"
+    }
+  ],
+  "model": "claude-haiku-4-5",
+  "provider": "opencode"
+}

@@ -23,7 +23,7 @@ This is a **ground-up rewrite** — not an incremental port. The original Rails 
 
 ## Reference Implementation
 
-The original Rails codebase lives at `~/Code/your-project-dashboard/` (branch: `main`). Key reference files:
+The original Rails 8.2 codebase is available as a btca resource named `your-project-dashboard` (configured in `./btca.config.jsonc`). Key reference files:
 
 ### Models & Schema
 - `app/models/project.rb` — Main model with 10 scopes, JSON metadata queries, helper methods (171 lines)
