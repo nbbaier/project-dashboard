@@ -116,14 +116,14 @@ function statusCondition(status: string) {
 // Tech stack condition - uses json_each for exact matching
 function techStackCondition(tech: string) {
   return sql`EXISTS (
-		SELECT 1 FROM json_each(json_extract(${projects.metadata}, '$.tech_stack'))
+		SELECT 1 FROM json_each(json_extract(${projects.metadata}, '$.techStack'))
 		WHERE value = ${tech}
 	)`;
 }
 
 // Type condition
 function typeCondition(type: string) {
-  return sql`json_extract(${projects.metadata}, '$.inferred_type') = ${type}`;
+  return sql`json_extract(${projects.metadata}, '$.inferredType') = ${type}`;
 }
 
 // Ownership conditions
@@ -145,7 +145,7 @@ function buildOrderBy(sort: string | undefined, direction: string | undefined) {
     return dir(projects.name);
   }
   if (sort === "commit_count") {
-    const commitCountSql = sql`CAST(COALESCE(json_extract(${projects.metadata}, '$.commit_count_8m'), 0) AS INTEGER)`;
+    const commitCountSql = sql`CAST(COALESCE(json_extract(${projects.metadata}, '$.commitCount8m'), 0) AS INTEGER)`;
     return dir(commitCountSql);
   }
   // Default: last_commit_date
@@ -262,8 +262,8 @@ export async function loadSidebarData(): Promise<{
 export async function distinctTechStacks(): Promise<string[]> {
   const result = await db.all<{ tech_stack: string }>(sql`
 		SELECT DISTINCT value as tech_stack
-		FROM projects, json_each(json_extract(metadata, '$.tech_stack'))
-		WHERE json_extract(metadata, '$.tech_stack') IS NOT NULL
+		FROM projects, json_each(json_extract(metadata, '$.techStack'))
+		WHERE json_extract(metadata, '$.techStack') IS NOT NULL
 		ORDER BY value
 	`);
 
@@ -273,9 +273,9 @@ export async function distinctTechStacks(): Promise<string[]> {
 // Get distinct project types
 export async function distinctProjectTypes(): Promise<string[]> {
   const result = await db.all<{ inferred_type: string }>(sql`
-		SELECT DISTINCT json_extract(metadata, '$.inferred_type') as inferred_type
+		SELECT DISTINCT json_extract(metadata, '$.inferredType') as inferred_type
 		FROM projects
-		WHERE json_extract(metadata, '$.inferred_type') IS NOT NULL
+		WHERE json_extract(metadata, '$.inferredType') IS NOT NULL
 		ORDER BY inferred_type
 	`);
 
@@ -289,13 +289,11 @@ export async function findAdjacentProjects(
   sort: string,
   direction: string
 ): Promise<[ProjectSelect | null, ProjectSelect | null]> {
-  const dir = direction === "asc" ? asc : desc;
-
   // Get all project IDs in the current sort order
   const allProjects = await db
     .select({ id: projects.id })
     .from(projects)
-    .orderBy(dir(buildOrderBy(sort, direction)));
+    .orderBy(buildOrderBy(sort, direction));
 
   const currentIndex = allProjects.findIndex((p) => p.id === currentProject.id);
 

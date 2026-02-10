@@ -64,7 +64,7 @@ const FilterPills: FC<{
       url.set("direction", params.direction);
     }
     for (const f of filters) {
-      if (f.key !== key && f.key !== "search") {
+      if (f.key !== key) {
         url.set(f.key, params[f.key as keyof FilterParams] as string);
       }
     }

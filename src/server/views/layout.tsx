@@ -22,8 +22,8 @@ export const Layout: FC<
             </div>
           </main>
         </div>
-        <script src="/htmx.min.js" />
-        <script src="/main.js" />
+        <script src="/htmx.min.js">{""}</script>
+        <script src="/main.js">{""}</script>
       </body>
     </html>
   );
