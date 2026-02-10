@@ -5,25 +5,33 @@ import { projects } from "../db/schema.ts";
 
 const PER_PAGE = 25;
 
+// Helper to transform empty strings to undefined
+const emptyToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((val) => (val === "" ? undefined : val), schema);
+
 // Zod schema for parsing + validating URL query params
 export const filterParamsSchema = z.object({
-  search: z.string().optional(),
-  ownership: z.enum(["own", "forks"]).optional(),
-  status: z
-    .enum([
-      "active",
-      "recent",
-      "paused",
-      "wip",
-      "deployed",
-      "active_this_week",
-      "stalled",
-    ])
-    .optional(),
-  techStack: z.string().optional(),
-  type: z.string().optional(),
-  sort: z.enum(["name", "last_commit_date", "commit_count"]).optional(),
-  direction: z.enum(["asc", "desc"]).optional(),
+  search: emptyToUndefined(z.string().optional()),
+  ownership: emptyToUndefined(z.enum(["own", "forks"]).optional()),
+  status: emptyToUndefined(
+    z
+      .enum([
+        "active",
+        "recent",
+        "paused",
+        "wip",
+        "deployed",
+        "active_this_week",
+        "stalled",
+      ])
+      .optional()
+  ),
+  techStack: emptyToUndefined(z.string().optional()),
+  type: emptyToUndefined(z.string().optional()),
+  sort: emptyToUndefined(
+    z.enum(["name", "last_commit_date", "commit_count"]).optional()
+  ),
+  direction: emptyToUndefined(z.enum(["asc", "desc"]).optional()),
   page: z.coerce.number().int().positive().optional().default(1),
 });
 
@@ -42,31 +50,65 @@ function searchCondition(query: string) {
 	)`;
 }
 
-// Status conditions
+// Status conditions - match computeStatus() priority: WIP > Deployed > recency
 function statusCondition(status: string) {
   if (status === "active" || status === "active_this_week") {
-    return sql`date(substr(${projects.lastCommitDate}, 1, 10)) >= date('now', '-7 days')`;
+    // Active: recent commit AND not WIP AND not deployed
+    return sql`(
+      date(substr(${projects.lastCommitDate}, 1, 10)) >= date('now', '-7 days')
+      AND NOT (
+        COALESCE(${projects.lastCommitMessage}, '') LIKE '%WIP%' OR
+        COALESCE(${projects.lastCommitMessage}, '') LIKE '%TODO%' OR
+        COALESCE(${projects.lastCommitMessage}, '') LIKE '%FIXME%' OR
+        COALESCE(${projects.lastCommitMessage}, '') LIKE '%in progress%' OR
+        COALESCE(json_extract(${projects.metadata}, '$.currentState'), '') LIKE '%work in progress%'
+      )
+      AND NOT (COALESCE(json_extract(${projects.metadata}, '$.deploymentStatus'), '') LIKE '%likely deployed%')
+    )`;
   }
   if (status === "recent") {
-    return sql`date(substr(${projects.lastCommitDate}, 1, 10)) BETWEEN date('now', '-30 days') AND date('now', '-7 days')`;
+    // Recent: 7-30 days AND not WIP AND not deployed
+    return sql`(
+      date(substr(${projects.lastCommitDate}, 1, 10)) BETWEEN date('now', '-30 days') AND date('now', '-7 days')
+      AND NOT (
+        (${projects.lastCommitMessage} LIKE '%WIP%' OR
+         ${projects.lastCommitMessage} LIKE '%TODO%' OR
+         ${projects.lastCommitMessage} LIKE '%FIXME%' OR
+         ${projects.lastCommitMessage} LIKE '%in progress%') OR
+        json_extract(${projects.metadata}, '$.currentState') LIKE '%work in progress%'
+      )
+      AND NOT (json_extract(${projects.metadata}, '$.deploymentStatus') LIKE '%likely deployed%')
+    )`;
   }
   if (status === "paused") {
-    return sql`date(substr(${projects.lastCommitDate}, 1, 10)) < date('now', '-30 days')`;
+    // Paused: >30 days AND not WIP AND not deployed
+    return sql`(
+      date(substr(${projects.lastCommitDate}, 1, 10)) < date('now', '-30 days')
+      AND NOT (
+        (${projects.lastCommitMessage} LIKE '%WIP%' OR
+         ${projects.lastCommitMessage} LIKE '%TODO%' OR
+         ${projects.lastCommitMessage} LIKE '%FIXME%' OR
+         ${projects.lastCommitMessage} LIKE '%in progress%') OR
+        json_extract(${projects.metadata}, '$.currentState') LIKE '%work in progress%'
+      )
+      AND NOT (json_extract(${projects.metadata}, '$.deploymentStatus') LIKE '%likely deployed%')
+    )`;
   }
   if (status === "stalled") {
     return sql`date(substr(${projects.lastCommitDate}, 1, 10)) BETWEEN date('now', '-60 days') AND date('now', '-14 days')`;
   }
   if (status === "wip") {
     return sql`(
-				(${projects.lastCommitMessage} LIKE '%WIP%' OR
-				 ${projects.lastCommitMessage} LIKE '%TODO%' OR
-				 ${projects.lastCommitMessage} LIKE '%FIXME%' OR
-				 ${projects.lastCommitMessage} LIKE '%in progress%') OR
-				json_extract(${projects.metadata}, '$.current_state') LIKE '%work in progress%'
-			)`;
+      (${projects.lastCommitMessage} LIKE '%WIP%' OR
+       ${projects.lastCommitMessage} LIKE '%TODO%' OR
+       ${projects.lastCommitMessage} LIKE '%FIXME%' OR
+       ${projects.lastCommitMessage} LIKE '%in progress%') OR
+      json_extract(${projects.metadata}, '$.currentState') LIKE '%work in progress%'
+    )`;
   }
   if (status === "deployed") {
-    return sql`json_extract(${projects.metadata}, '$.deployment_status') LIKE '%likely deployed%'`;
+    // Deployed: has deployment status (simplified - WIP projects are rare)
+    return sql`json_extract(${projects.metadata}, '$.deploymentStatus') LIKE '%likely deployed%'`;
   }
   return undefined;
 }

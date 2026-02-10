@@ -12,7 +12,7 @@ import {
 } from "../lib/filters.ts";
 import { computeStatus } from "../lib/helpers.ts";
 import { Layout } from "../views/layout.tsx";
-import { ProjectsIndex } from "../views/projects/index.tsx";
+import { ProjectsIndex, ResultsPartial } from "../views/projects/index.tsx";
 import { ProjectShow } from "../views/projects/show.tsx";
 import { Sidebar } from "../views/sidebar.tsx";
 
@@ -54,16 +54,12 @@ app.get("/", async (c) => {
 
   // If htmx request, return only #results fragment
   if (c.req.header("HX-Request")) {
-    // Return just the results partial
     return c.html(
-      <ProjectsIndex
+      <ResultsPartial
         page={projectsResult.page}
         params={params}
         perPage={projectsResult.perPage}
-        projectTypes={projectTypes}
-        quickResume={quickResume}
         results={projectsResult.results}
-        techStacks={techStacks}
         totalCount={projectsResult.totalCount}
       />
     );

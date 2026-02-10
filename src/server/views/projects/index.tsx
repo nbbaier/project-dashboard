@@ -548,6 +548,38 @@ const FilterForm: FC<{
   );
 };
 
+// Results partial - for htmx swaps
+interface ResultsPartialProps {
+  results: ProjectSelect[];
+  totalCount: number;
+  page: number;
+  perPage: number;
+  params: FilterParams;
+}
+
+export const ResultsPartial: FC<ResultsPartialProps> = ({
+  results,
+  totalCount,
+  page,
+  perPage,
+  params,
+}) => {
+  return (
+    <>
+      <FilterPills params={params} />
+      <div class="overflow-hidden rounded-lg border border-gray-200 shadow-xs dark:border-gray-700">
+        <ResultsTable params={params} results={results} />
+      </div>
+      <Pagination
+        page={page}
+        params={params}
+        perPage={perPage}
+        totalCount={totalCount}
+      />
+    </>
+  );
+};
+
 // Main component
 export const ProjectsIndex: FC<ProjectsIndexProps> = ({
   results,
@@ -599,14 +631,11 @@ export const ProjectsIndex: FC<ProjectsIndexProps> = ({
       />
 
       <div id="results">
-        <FilterPills params={params} />
-        <div class="overflow-hidden rounded-lg border border-gray-200 shadow-xs dark:border-gray-700">
-          <ResultsTable params={params} results={results} />
-        </div>
-        <Pagination
+        <ResultsPartial
           page={page}
           params={params}
           perPage={perPage}
+          results={results}
           totalCount={totalCount}
         />
       </div>
